@@ -183,8 +183,9 @@ const projectPlanSchema = new Schema(
       },
     ],
     // "<trainId>:<wagonId>" -> workflow ids switched off for that one pair.
+    // Materials are not listed here: a sub-stage already carries the ones its
+    // work needs, so a second list could only fall out of step with it.
     exclusions: { type: Map, of: [String], default: undefined },
-    materials: [{ type: Schema.Types.ObjectId, ref: "Material" }],
   },
   { _id: false },
 );

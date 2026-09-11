@@ -28,7 +28,6 @@ const buildPlan = (body) => {
       scope: item.scope === "TRAIN" ? "TRAIN" : "WAGON",
     })),
     exclusions: body.exclusions ?? {},
-    materials: body.materialIds ?? [],
   };
 };
 
