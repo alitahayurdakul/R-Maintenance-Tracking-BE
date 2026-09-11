@@ -313,8 +313,12 @@ export const processDetailOut = (process, { totalWagonCount = 0 } = {}) => {
       wagonOrder: process.wagon?.order ?? 1,
     },
 
+    // `_id` is the stage's own id, not the entry's: the page pairs the two with
+    // `entry.stageId._id === stage._id`, and opens a stage's sub-stages by this
+    // same value.
     stages: entries.map((entry, index) => ({
-      _id: id(entry),
+      _id: id(entry.stageId),
+      entryId: id(entry),
       processInstanceId: id(process),
       stageId: id(entry.stageId),
       name: entry.stageName ?? entry.stageId?.name ?? "",
@@ -329,31 +333,32 @@ export const processDetailOut = (process, { totalWagonCount = 0 } = {}) => {
       subStages: (entry.subStages ?? []).map(subStageEntryOut),
     })),
 
-    entries: entries
-      .filter((entry) => entry.startedAt)
-      .map((entry, index) => ({
-        _id: id(entry),
-        createdAt: entry.createdAt ?? entry.startedAt,
-        updatedAt: entry.updatedAt ?? entry.startedAt,
-        durationMinutes: entry.endedAt
-          ? minutesBetween(entry.startedAt, entry.endedAt)
-          : null,
-        startedAt: entry.startedAt,
-        endedAt: entry.endedAt,
-        isOpen: !entry.endedAt,
-        note: entry.note ?? "",
-        operator: entry.operator ?? "",
-        processInstanceId: id(process),
-        sequenceNo: entry.plannedOrder ?? index + 1,
-        stageId: {
-          _id: id(entry.stageId),
-          name: entry.stageName ?? entry.stageId?.name ?? "",
-          description: entry.stageId?.description ?? "",
-          plannedOrder: entry.plannedOrder ?? index + 1,
-        },
-        delayNote: entry.delayNote ?? "",
-        delayReasonIds: [],
-      })),
+    // Every planned stage has an entry, started or not. Listing only the started
+    // ones left a fresh process with an empty `entries` array, which the page
+    // reads as "no details found".
+    entries: entries.map((entry, index) => ({
+      _id: id(entry),
+      createdAt: entry.createdAt ?? entry.startedAt,
+      updatedAt: entry.updatedAt ?? entry.startedAt,
+      durationMinutes: entry.endedAt
+        ? minutesBetween(entry.startedAt, entry.endedAt)
+        : null,
+      startedAt: entry.startedAt,
+      endedAt: entry.endedAt,
+      isOpen: !entry.endedAt,
+      note: entry.note ?? "",
+      operator: entry.operator ?? "",
+      processInstanceId: id(process),
+      sequenceNo: entry.plannedOrder ?? index + 1,
+      stageId: {
+        _id: id(entry.stageId),
+        name: entry.stageName ?? entry.stageId?.name ?? "",
+        description: entry.stageId?.description ?? "",
+        plannedOrder: entry.plannedOrder ?? index + 1,
+      },
+      delayNote: entry.delayNote ?? "",
+      delayReasonIds: [],
+    })),
 
     summary: {
       totalStages: list.stageCount,
