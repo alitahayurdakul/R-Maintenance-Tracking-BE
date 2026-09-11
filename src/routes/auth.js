@@ -15,11 +15,18 @@ import { Role, User } from "../models/index.js";
 
 export const authRouter = Router();
 
-/** POST /auth — the login form posts { email, password } and reads accessToken. */
+/**
+ * POST /auth — the login form posts `{ email, pwd }` and reads `accessToken`.
+ *
+ * The field is `pwd`, not `password`: LoginCard sends `{ email, pwd }` and the
+ * Next route forwards the body untouched. `password` is accepted too, so a
+ * hand-made request still works.
+ */
 authRouter.post(
   "/auth",
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body ?? {};
+    const { email } = req.body ?? {};
+    const password = req.body?.pwd ?? req.body?.password;
     if (!email || !password) throw badRequest("Email and password are required");
 
     const user = await User.findOne({ email: String(email).toLowerCase() }).populate("role");
@@ -62,12 +69,15 @@ authRouter.post(
   }),
 );
 
-/** POST /register — the user-management form creates accounts through here. */
+/**
+ * POST /register — the user-management form creates accounts through here, and
+ * sends the password as `pwd` the same way the login form does.
+ */
 authRouter.post(
   "/register",
   asyncHandler(async (req, res) => {
-    const { fullname, email, password, phone, department, role, creator } =
-      req.body ?? {};
+    const { fullname, email, phone, department, role, creator } = req.body ?? {};
+    const password = req.body?.pwd ?? req.body?.password;
     if (!fullname || !email || !password) {
       throw badRequest("fullname, email and password are required");
     }
