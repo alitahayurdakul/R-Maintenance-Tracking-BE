@@ -30,7 +30,18 @@ export const config = {
   refreshSecret: required("REFRESH_TOKEN_SECRET", "dev-refresh-secret"),
   accessTtl: process.env.ACCESS_TOKEN_TTL || "15m",
   refreshTtl: process.env.REFRESH_TOKEN_TTL || "7d",
-  clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+  /** Comma-separated when more than one frontend talks to this API. */
+  clientOrigins: (process.env.CLIENT_ORIGIN || "http://localhost:3000")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+  /**
+   * A refresh cookie only survives a cross-site request as `SameSite=None;
+   * Secure`. Left as `lax`/insecure for local development, where the frontend
+   * and the API share an origin and the connection is plain http.
+   */
+  cookieSameSite: process.env.COOKIE_SAMESITE || "lax",
+  cookieSecure: process.env.COOKIE_SECURE === "true",
   /** The frontend reads the refresh token from this cookie (SESSION_COOKIE_NAME). */
   cookieName: "jwt",
 };

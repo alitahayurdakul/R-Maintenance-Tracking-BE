@@ -17,7 +17,7 @@ export const createApp = () => {
   // explicit origin plus credentials — a wildcard would be rejected.
   app.use(
     cors({
-      origin: config.clientOrigin,
+      origin: config.clientOrigins,
       credentials: true,
     }),
   );

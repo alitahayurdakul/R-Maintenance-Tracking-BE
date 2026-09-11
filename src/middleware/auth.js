@@ -33,14 +33,18 @@ export const signRefreshToken = (user) =>
 export const setRefreshCookie = (res, token) => {
   res.cookie(config.cookieName, token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: config.cookieSameSite,
+    secure: config.cookieSecure,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 
 export const clearRefreshCookie = (res) => {
-  res.clearCookie(config.cookieName, { httpOnly: true, sameSite: "lax" });
+  res.clearCookie(config.cookieName, {
+    httpOnly: true,
+    sameSite: config.cookieSameSite,
+    secure: config.cookieSecure,
+  });
 };
 
 /**
