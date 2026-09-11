@@ -40,14 +40,6 @@ const trainIdsByWagon = async () => {
     });
   });
 
-  // Trains that still carry their own wagon list rather than a type.
-  trains.forEach((train) => {
-    (train.wagons ?? []).forEach((entry) => {
-      const key = String(entry.wagon);
-      byWagon.set(key, [...(byWagon.get(key) ?? []), String(train._id)]);
-    });
-  });
-
   return byWagon;
 };
 
@@ -212,7 +204,6 @@ fleetRouter.delete(
 
 const trainPopulate = [
   { path: "trainType", populate: { path: "wagons.wagon" } },
-  { path: "wagons.wagon" },
 ];
 
 /**
@@ -300,7 +291,6 @@ fleetRouter.post(
       desc: body.desc ?? "",
       trainModel: body.trainModel ?? null,
       trainType: body.trainTypeId ?? body.trainType ?? null,
-      wagons: wagonEntries(body.wagons),
       creator: body.creator,
     });
     const train = await Train.findById(created._id).populate(trainPopulate);
@@ -322,7 +312,6 @@ fleetRouter.put(
         ...(body.desc !== undefined && { desc: body.desc }),
         ...(body.trainModel !== undefined && { trainModel: body.trainModel }),
         ...(body.trainTypeId !== undefined && { trainType: body.trainTypeId || null }),
-        ...(body.wagons !== undefined && { wagons: wagonEntries(body.wagons) }),
         editor: body.editor,
       },
       { new: true },

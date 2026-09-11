@@ -80,15 +80,9 @@ const trainSchema = new Schema(
     desc: { type: String, default: "" },
     trainModel: { type: String, default: null },
     year: Number,
+    // Wagons hang off the type, never off the train: every train of a type
+    // carries the same set, so storing it twice could only disagree with itself.
     trainType: { type: Schema.Types.ObjectId, ref: "TrainType", default: null },
-    // Kept for trains created before types existed; the type wins when set.
-    wagons: [
-      {
-        _id: false,
-        wagon: { type: Schema.Types.ObjectId, ref: "Wagon", required: true },
-        order: { type: Number, default: 1 },
-      },
-    ],
     creator: String,
     editor: String,
   },

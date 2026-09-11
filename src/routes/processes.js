@@ -204,9 +204,7 @@ processesRouter.get(
     if (!process) throw notFound();
 
     // The page shows "wagon N of M", and M is how many wagons the train carries.
-    const trainType = process.train?.trainType;
-    const totalWagonCount =
-      (trainType?.wagons ?? process.train?.wagons ?? []).length;
+    const totalWagonCount = (process.train?.trainType?.wagons ?? []).length;
 
     res.json(processDetailOut(process, { totalWagonCount }));
   }),

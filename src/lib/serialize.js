@@ -152,19 +152,15 @@ export const trainTypeOut = (trainType, { trainCount = 0 } = {}) => ({
   updatedAt: trainType.updatedAt,
 });
 
-/** A train's wagons come from its type; the embedded list is the fallback. */
-export const trainWagons = (train) => {
-  const fromType = train.trainType?.wagons ?? [];
-  const source = fromType.length ? fromType : (train.wagons ?? []);
-
-  return source
+/** A train's wagons are its type's wagons. There is no other source. */
+export const trainWagons = (train) =>
+  (train.trainType?.wagons ?? [])
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .filter((entry) => entry.wagon?.wagonNo)
     .map((entry) =>
       wagonOut(entry.wagon, { order: entry.order, trainIds: [id(train)] }),
     );
-};
 
 export const trainOut = (train) => ({
   _id: id(train),
