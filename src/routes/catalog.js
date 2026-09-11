@@ -1,6 +1,7 @@
 import { Router } from "express";
 
-import { asyncHandler, badRequest, notFound, sendList } from "../lib/http.js";
+import { audit, CATALOG_ACTIONS, LOG_ACTIONS } from "../lib/audit.js";
+import { asyncHandler, badRequest, notFound, pagedResponse, pageParams, sendList } from "../lib/http.js";
 import {
   materialOut,
   reasonOut,
@@ -11,6 +12,7 @@ import {
   workflowOut,
 } from "../lib/serialize.js";
 import {
+  Log,
   Material,
   Reason,
   Role,
@@ -49,6 +51,8 @@ const crud = ({ path, model, listKey, map, populate = [], build, patch }) => {
     asyncHandler(async (req, res) => {
       const doc = await model.create(build(req.body ?? {}));
       const saved = await model.findById(doc._id).populate(populate);
+      const action = CATALOG_ACTIONS[path]?.create;
+      if (action) audit(req, action);
       res.status(201).json({ success: true, data: map(saved) });
     }),
   );
@@ -61,6 +65,8 @@ const crud = ({ path, model, listKey, map, populate = [], build, patch }) => {
         .findByIdAndUpdate(req.params.id, update, { new: true })
         .populate(populate);
       if (!doc) throw notFound();
+      const action = CATALOG_ACTIONS[path]?.update;
+      if (action) audit(req, action);
       res.json({ success: true, data: map(doc) });
     }),
   );
@@ -70,6 +76,8 @@ const crud = ({ path, model, listKey, map, populate = [], build, patch }) => {
     asyncHandler(async (req, res) => {
       const doc = await model.findByIdAndDelete(req.params.id);
       if (!doc) throw notFound();
+      const action = CATALOG_ACTIONS[path]?.delete;
+      if (action) audit(req, action);
       res.json({ success: true });
     }),
   );
@@ -207,6 +215,7 @@ catalogRouter.put(
     ).populate("role");
 
     if (!user) throw notFound();
+    audit(req, LOG_ACTIONS.USER_UPDATE);
     res.json({ success: true, data: userOut(user) });
   }),
 );
@@ -216,6 +225,7 @@ catalogRouter.delete(
   asyncHandler(async (req, res) => {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) throw notFound();
+    audit(req, LOG_ACTIONS.USER_DELETE);
     res.json({ success: true });
   }),
 );
@@ -238,6 +248,41 @@ catalogRouter.put(
     user.password = await bcrypt.hash(String(newPassword), 10);
     await user.save();
 
+    audit(req, LOG_ACTIONS.USER_PASSWORD_CHANGE);
     res.json({ success: true });
+  }),
+);
+
+/* ---------------------------------------------------------------------- logs */
+
+/**
+ * GET /api/logs — the operations table.
+ *
+ * Newest first and always paged: the page has no "all logs" mode, and an audit
+ * trail is the one list that grows without bound.
+ */
+catalogRouter.get(
+  "/api/logs",
+  asyncHandler(async (req, res) => {
+    const { pageNumber, pageSize, skip } = pageParams(req);
+    const [docs, totalCount] = await Promise.all([
+      Log.find({}).sort({ operationTime: -1 }).skip(skip).limit(pageSize),
+      Log.countDocuments({}),
+    ]);
+
+    res.json(
+      pagedResponse({
+        data: docs.map((log) => ({
+          _id: String(log._id),
+          userId: log.userId ?? "",
+          fullname: log.fullname ?? "",
+          action: log.action,
+          operationTime: log.operationTime,
+        })),
+        totalCount,
+        pageNumber,
+        pageSize,
+      }),
+    );
   }),
 );

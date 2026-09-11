@@ -215,6 +215,26 @@ const projectSchema = new Schema(
   stamps,
 );
 
+/* ---------------------------------------------------------------- audit log */
+
+/**
+ * One recorded operation, in the shape the logs table reads.
+ *
+ * `action` is one of the keys in the frontend's LOG_ACTIONS, and the page
+ * translates it — so the value stored here is the key, never a sentence.
+ */
+const logSchema = new Schema(
+  {
+    userId: { type: String, default: "" },
+    fullname: { type: String, default: "" },
+    action: { type: String, required: true },
+    operationTime: { type: Date, default: Date.now },
+  },
+  { timestamps: false },
+);
+
+logSchema.index({ operationTime: -1 });
+
 /* ----------------------------------------------------------------- processes */
 
 const subStageEntrySchema = new Schema(
@@ -290,3 +310,4 @@ export const Workflow = model("Workflow", workflowSchema);
 export const Reason = model("Reason", reasonSchema);
 export const Project = model("Project", projectSchema);
 export const Process = model("Process", processSchema);
+export const Log = model("Log", logSchema);

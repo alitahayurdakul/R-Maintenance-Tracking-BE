@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { audit, LOG_ACTIONS } from "../lib/audit.js";
 import { asyncHandler, notFound, sendList } from "../lib/http.js";
 import { projectProgress } from "../lib/progress.js";
 import { projectOut } from "../lib/serialize.js";
@@ -78,6 +79,7 @@ projectsRouter.post(
       plan: buildPlan(body),
       creator: body.creator,
     });
+    audit(req, LOG_ACTIONS.PROJECT_CREATE);
     res.status(201).json({ success: true, data: projectOut(project) });
   }),
 );

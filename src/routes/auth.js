@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 
+import { audit, LOG_ACTIONS } from "../lib/audit.js";
 import { config } from "../config.js";
 import { asyncHandler, badRequest, HttpError } from "../lib/http.js";
 import { userOut } from "../lib/serialize.js";
@@ -36,6 +37,8 @@ authRouter.post(
     if (!matches) throw new HttpError(401, "Invalid credentials");
 
     setRefreshCookie(res, signRefreshToken(user));
+    // The caller is not authenticated yet, so the actor comes from the record.
+    audit(req, LOG_ACTIONS.AUTH_LOGIN, { userId: String(user._id), fullname: user.fullname });
     res.json({ accessToken: signAccessToken(user), user: userOut(user) });
   }),
 );
@@ -65,6 +68,7 @@ authRouter.post(
   "/logout",
   asyncHandler(async (_req, res) => {
     clearRefreshCookie(res);
+    audit(req, LOG_ACTIONS.AUTH_LOGOUT);
     res.status(204).end();
   }),
 );
@@ -97,6 +101,7 @@ authRouter.post(
       creator: creator ?? "",
     });
 
+    audit(req, LOG_ACTIONS.USER_CREATE, { userId: String(user._id), fullname: user.fullname });
     res.status(201).json({ success: true, data: userOut(user) });
   }),
 );

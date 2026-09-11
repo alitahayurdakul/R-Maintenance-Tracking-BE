@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { audit, LOG_ACTIONS } from "../lib/audit.js";
 import { asyncHandler, notFound, sendList } from "../lib/http.js";
 import { trainOut, trainTypeOut, wagonOut } from "../lib/serialize.js";
 import { Process, Train, TrainType, Wagon } from "../models/index.js";
@@ -87,6 +88,7 @@ fleetRouter.post(
       order: body.order ?? 1,
       creator: body.creator,
     });
+    audit(req, LOG_ACTIONS.WAGON_CREATE);
     res.status(201).json({ success: true, data: wagonOut(wagon) });
   }),
 );
@@ -302,6 +304,7 @@ fleetRouter.post(
       creator: body.creator,
     });
     const train = await Train.findById(created._id).populate(trainPopulate);
+    audit(req, LOG_ACTIONS.TRAIN_CREATE);
     res.status(201).json({ success: true, data: trainOut(train) });
   }),
 );
@@ -334,6 +337,7 @@ fleetRouter.delete(
   asyncHandler(async (req, res) => {
     const train = await Train.findByIdAndDelete(req.params.id);
     if (!train) throw notFound();
+    audit(req, LOG_ACTIONS.TRAIN_DELETE);
     res.json({ success: true });
   }),
 );

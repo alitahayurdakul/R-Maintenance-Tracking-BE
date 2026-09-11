@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { audit, LOG_ACTIONS } from "../lib/audit.js";
 import { asyncHandler, badRequest, isPaged, notFound, pagedResponse, pageParams } from "../lib/http.js";
 import { processDetailOut, processOut, subStageEntryOut } from "../lib/serialize.js";
 import { Process, Stage, Workflow } from "../models/index.js";
@@ -191,6 +192,7 @@ processesRouter.post(
     });
 
     const process = await Process.findById(created._id).populate(populateProcess);
+    audit(req, LOG_ACTIONS.PROCESS_START);
     res.status(201).json({ success: true, data: { process: processOut(process) } });
   }),
 );
@@ -209,6 +211,7 @@ processesRouter.delete(
   asyncHandler(async (req, res) => {
     const process = await Process.findByIdAndDelete(req.params.id);
     if (!process) throw notFound();
+    audit(req, LOG_ACTIONS.PROCESS_DELETE);
     res.json({ success: true });
   }),
 );
@@ -249,6 +252,7 @@ processesRouter.post(
     entry.operator = operator ?? entry.operator;
     await process.save();
 
+    audit(req, LOG_ACTIONS.STAGE_START);
     res.json({ success: true, data: { entryId: String(entry._id) } });
   }),
 );
@@ -269,6 +273,7 @@ processesRouter.put(
     });
 
     await process.save();
+    audit(req, LOG_ACTIONS.STAGE_COMPLETE);
     res.json({ success: true });
   }),
 );
@@ -283,6 +288,7 @@ processesRouter.put(
     process.completedAt = new Date();
     await process.save();
 
+    audit(req, LOG_ACTIONS.PROCESS_COMPLETE);
     res.json({ success: true });
   }),
 );
@@ -327,6 +333,7 @@ processesRouter.put(
     }
 
     await process.save();
+    if (sub.status === 2) audit(req, LOG_ACTIONS.SUB_STAGE_COMPLETE);
     res.json({ success: true });
   }),
 );
