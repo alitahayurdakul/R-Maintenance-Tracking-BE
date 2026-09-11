@@ -100,10 +100,20 @@ processesRouter.get(
     const docs = await Process.find(filter)
       .sort({ createdAt: -1 })
       .populate(populateProcess);
-    const list = docs.map(processOut);
 
-    if (wagonId) return res.json({ count: list.length, processes: list });
-    return res.json(list);
+    // Asked for one wagon, the caller is the wagon modal, which renders
+    // `{ process, stages, entries, summary }` per process rather than the flat
+    // row the grid and the train table read.
+    if (wagonId) {
+      const detailed = docs.map((doc) =>
+        processDetailOut(doc, {
+          totalWagonCount: (doc.train?.trainType?.wagons ?? []).length,
+        }),
+      );
+      return res.json({ count: detailed.length, processes: detailed });
+    }
+
+    return res.json(docs.map(processOut));
   }),
 );
 
