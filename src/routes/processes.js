@@ -193,7 +193,10 @@ processesRouter.post(
 
     const process = await Process.findById(created._id).populate(populateProcess);
     audit(req, LOG_ACTIONS.PROCESS_START);
-    res.status(201).json({ success: true, data: { process: processOut(process) } });
+    // `{ process }` and nothing more: the Next handler wraps this once, and the
+    // form reads the id at `responseData.data.process._id`. A second wrapper
+    // here pushes it out of reach.
+    res.status(201).json({ process: processOut(process) });
   }),
 );
 
