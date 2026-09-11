@@ -1,0 +1,4 @@
+node_modules
+.env
+# The root .gitignore excludes every .env*, but the template has to ship.
+!.env.example
