@@ -282,24 +282,89 @@ export const subStageEntryOut = (entry) => ({
     : { _id: id(entry.subStageId) },
 });
 
-export const processDetailOut = (process) => ({
-  ...processOut(process),
-  stages: (process.entries ?? []).map((entry) => ({
-    id: id(entry),
-    entryId: id(entry),
-    stageId: id(entry.stageId),
-    name: entry.stageName ?? entry.stageId?.name ?? "",
-    status: entry.endedAt ? 2 : entry.startedAt ? 1 : 0,
-    start: entry.startedAt,
-    end: entry.endedAt,
-    plannedOrder: entry.plannedOrder,
-    canSkip: !!entry.canSkip,
-    isSkipped: !!entry.isSkipped,
-    elapsed: entry.startedAt
-      ? String(minutesBetween(entry.startedAt, entry.endedAt))
-      : null,
-    subStages: (entry.subStages ?? []).map(subStageEntryOut),
-  })),
-});
+/**
+ * The active-process detail page's payload: `{ process, stages, entries, summary }`.
+ *
+ * `stages` is the workflow as planned, `entries` the attempts recorded against
+ * it. The page pairs them by `stageId`, which is why an entry carries the id as
+ * well as the stage object — and why `entries[].\_id` matters: closing a stage
+ * posts that id, not the stage's.
+ */
+export const processDetailOut = (process, { totalWagonCount = 0 } = {}) => {
+  const entries = process.entries ?? [];
+  const list = processOut(process);
+
+  return {
+    process: {
+      _id: id(process),
+      locomotiveNo: list.locomotiveNo,
+      fleetOwner: list.fleetOwner,
+      workflowId: list.workflowId,
+      workflowName: list.workflowName,
+      creator: list.creator ?? "",
+      status: process.status,
+      currentStageId: list.currentStageId,
+      startedAt: process.startedAt,
+      completedAt: process.completedAt,
+      createdAt: process.createdAt,
+      updatedAt: process.updatedAt,
+      projectId: list.projectId,
+      projectName: list.projectName,
+      wagonId: list.wagonId,
+      wagonNo: list.wagonNo,
+      description: process.description ?? "",
+      totalWagonCount,
+      wagonOrder: process.wagon?.order ?? 1,
+    },
+
+    stages: entries.map((entry, index) => ({
+      _id: id(entry),
+      processInstanceId: id(process),
+      stageId: id(entry.stageId),
+      name: entry.stageName ?? entry.stageId?.name ?? "",
+      description: entry.stageId?.description ?? "",
+      order: entry.plannedOrder ?? index + 1,
+      plannedOrder: entry.plannedOrder ?? index + 1,
+      status: entry.endedAt ? "COMPLETED" : entry.startedAt ? "ACTIVE" : "PENDING",
+      isActive: !!entry.startedAt && !entry.endedAt,
+      sourceType: "WORKFLOW",
+      canSkip: !!entry.canSkip,
+      isSkipped: !!entry.isSkipped,
+      subStages: (entry.subStages ?? []).map(subStageEntryOut),
+    })),
+
+    entries: entries
+      .filter((entry) => entry.startedAt)
+      .map((entry, index) => ({
+        _id: id(entry),
+        createdAt: entry.createdAt ?? entry.startedAt,
+        updatedAt: entry.updatedAt ?? entry.startedAt,
+        durationMinutes: entry.endedAt
+          ? minutesBetween(entry.startedAt, entry.endedAt)
+          : null,
+        startedAt: entry.startedAt,
+        endedAt: entry.endedAt,
+        isOpen: !entry.endedAt,
+        note: entry.note ?? "",
+        operator: entry.operator ?? "",
+        processInstanceId: id(process),
+        sequenceNo: entry.plannedOrder ?? index + 1,
+        stageId: {
+          _id: id(entry.stageId),
+          name: entry.stageName ?? entry.stageId?.name ?? "",
+          description: entry.stageId?.description ?? "",
+          plannedOrder: entry.plannedOrder ?? index + 1,
+        },
+        delayNote: entry.delayNote ?? "",
+        delayReasonIds: [],
+      })),
+
+    summary: {
+      totalStages: list.stageCount,
+      completedStageCount: list.completedStageCount,
+      activeStageCount: list.activeStageCount,
+    },
+  };
+};
 
 export { id as toId, minutesBetween };

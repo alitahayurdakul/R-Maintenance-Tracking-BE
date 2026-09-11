@@ -9,7 +9,7 @@ export const processesRouter = Router();
 
 const populateProcess = [
   "project",
-  "train",
+  { path: "train", populate: { path: "trainType" } },
   "wagon",
   { path: "workflow", populate: { path: "stages.stageInfo" } },
   { path: "entries.stageId" },
@@ -202,7 +202,13 @@ processesRouter.get(
   asyncHandler(async (req, res) => {
     const process = await Process.findById(req.params.id).populate(populateProcess);
     if (!process) throw notFound();
-    res.json(processDetailOut(process));
+
+    // The page shows "wagon N of M", and M is how many wagons the train carries.
+    const trainType = process.train?.trainType;
+    const totalWagonCount =
+      (trainType?.wagons ?? process.train?.wagons ?? []).length;
+
+    res.json(processDetailOut(process, { totalWagonCount }));
   }),
 );
 
@@ -253,11 +259,14 @@ processesRouter.post(
     await process.save();
 
     audit(req, LOG_ACTIONS.STAGE_START);
-    res.json({ success: true, data: { entryId: String(entry._id) } });
+    // 201, not 200: the frontend's startStage handler treats anything else as a
+    // failure (`response.status === 201`), so the stage would never open.
+    res.status(201).json({ success: true, data: { entryId: String(entry._id) } });
   }),
 );
 
-processesRouter.put(
+// PATCH is what the frontend sends; PUT is accepted so a hand-made call works.
+processesRouter.all(
   "/api/processes/stage-entry/:entryId/close",
   asyncHandler(async (req, res) => {
     const process = await Process.findOne({ "entries._id": req.params.entryId });
@@ -278,7 +287,8 @@ processesRouter.put(
   }),
 );
 
-processesRouter.put(
+// The frontend posts here rather than putting; both verbs are accepted.
+processesRouter.all(
   "/api/processes/:processId/complete",
   asyncHandler(async (req, res) => {
     const process = await Process.findById(req.params.processId);

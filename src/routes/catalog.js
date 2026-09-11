@@ -106,12 +106,14 @@ crud({
   listKey: "subStages",
   map: subStageOut,
   populate: ["materials"],
+  // The forms send `materialIds`, not `materials`, and the edit form signs with
+  // `lastUpdatedBy` rather than `editor`.
   build: (body) => ({
     name: body.name,
     description: body.description ?? body.desc ?? "",
-    materials: body.materials ?? [],
+    materials: body.materialIds ?? body.materials ?? [],
     creator: body.creator,
-    editor: body.editor,
+    editor: body.editor ?? body.lastUpdatedBy,
   }),
 });
 
@@ -121,14 +123,15 @@ crud({
   listKey: "stages",
   map: stageOut,
   populate: ["materials", { path: "subStages", populate: "materials" }],
+  // The forms send `subStageIds`, not `subStages`.
   build: (body) => ({
     name: body.name,
     description: body.description ?? body.desc ?? "",
     plannedOrder: body.plannedOrder ?? null,
-    materials: body.materials ?? [],
-    subStages: body.subStages ?? [],
+    materials: body.materialIds ?? body.materials ?? [],
+    subStages: body.subStageIds ?? body.subStages ?? [],
     creator: body.creator,
-    editor: body.editor,
+    editor: body.editor ?? body.lastUpdatedBy,
   }),
 });
 
