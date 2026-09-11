@@ -64,7 +64,7 @@ const completedByTrain = (processes) => {
   processes.forEach((process) => {
     const done = (process.entries ?? []).reduce(
       (sum, entry) =>
-        sum + (entry.subStages ?? []).filter((sub) => sub.status === 2).length,
+        sum + (entry.subStages ?? []).filter((sub) => sub.status === "COMPLETED").length,
       0,
     );
     const key = String(process.train);

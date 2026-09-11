@@ -14,7 +14,8 @@ const populateProcess = [
   { path: "workflow", populate: { path: "stages.stageInfo" } },
   { path: "entries.stageId" },
   { path: "entries.subStages.subStageId", populate: { path: "materials" } },
-  { path: "entries.subStages.materials" },
+  // The material now sits one level down, next to its serial number.
+  { path: "entries.subStages.materials.material" },
   { path: "entries.subStages.delayReasons" },
 ];
 
@@ -48,8 +49,12 @@ const entriesFromWorkflow = async (workflowId) => {
         subStages: (stage?.subStages ?? []).map((subStage) => ({
           subStageId: subStage._id,
           name: subStage.name,
-          status: 0,
-          materials: subStage.materials ?? [],
+          status: "PENDING",
+          // The materials the sub-stage calls for, with no serial yet.
+          materials: (subStage.materials ?? []).map((material) => ({
+            material,
+            serialNumber: "",
+          })),
         })),
       };
     });
@@ -276,8 +281,8 @@ processesRouter.all(
     const entry = process.entries.id(req.params.entryId);
     entry.endedAt = new Date();
     entry.subStages.forEach((sub) => {
-      if (sub.status !== 2) {
-        sub.status = 2;
+      if (sub.status !== "COMPLETED") {
+        sub.status = "COMPLETED";
         sub.end = sub.end ?? new Date();
       }
     });
@@ -304,7 +309,13 @@ processesRouter.all(
   }),
 );
 
-/** Start or finish one sub-stage of one stage of one process. */
+/**
+ * Start, save or finish one sub-stage.
+ *
+ * The modal sends `{ status, description, delayReasons: [{reasonId, name}],
+ * materials: [{materialId, serialNumber}] }` — ids nested inside objects, and
+ * the status as one of the STATUS codes rather than a number.
+ */
 processesRouter.put(
   "/api/substages/processes/:processId/stages/:stageId/substages/:subStageId",
   asyncHandler(async (req, res) => {
@@ -318,33 +329,51 @@ processesRouter.put(
     if (!entry) throw notFound("Stage not found on this process");
 
     const sub = (entry.subStages ?? []).find(
-      (item) => String(item._id) === req.params.subStageId ||
+      (item) =>
+        String(item._id) === req.params.subStageId ||
         String(item.subStageId) === req.params.subStageId,
     );
     if (!sub) throw notFound("Sub-stage not found on this stage");
 
-    if (body.action === "start" || body.status === 1) {
-      sub.status = 1;
-      sub.start = sub.start ?? new Date();
+    const status =
+      body.status === "COMPLETED" || body.status === 2
+        ? "COMPLETED"
+        : body.status === "PENDING"
+          ? "PENDING"
+          : "ACTIVE";
+
+    sub.status = status;
+    if (status !== "PENDING") {
+      sub.start = sub.start ?? body.start ?? new Date();
       entry.startedAt = entry.startedAt ?? new Date();
-    } else {
-      sub.status = 2;
-      sub.start = sub.start ?? new Date();
-      sub.end = new Date();
     }
+    sub.end = status === "COMPLETED" ? new Date() : null;
 
     if (body.description !== undefined) sub.description = body.description;
     if (body.images !== undefined) sub.images = body.images;
-    if (body.materials !== undefined) sub.materials = body.materials;
-    if (body.delayReasons !== undefined) sub.delayReasons = body.delayReasons;
+
+    if (body.delayReasons !== undefined) {
+      sub.delayReasons = (body.delayReasons ?? [])
+        .map((reason) => reason?.reasonId ?? reason?._id ?? reason)
+        .filter(Boolean);
+    }
+
+    if (body.materials !== undefined) {
+      sub.materials = (body.materials ?? [])
+        .map((used) => ({
+          material: used?.materialId ?? used?.material ?? used?._id ?? used,
+          serialNumber: used?.serialNumber ?? "",
+        }))
+        .filter((used) => used.material);
+    }
 
     // A stage closes itself once nothing is left open inside it.
-    if ((entry.subStages ?? []).every((item) => item.status === 2)) {
+    if ((entry.subStages ?? []).every((item) => item.status === "COMPLETED")) {
       entry.endedAt = entry.endedAt ?? new Date();
     }
 
     await process.save();
-    if (sub.status === 2) audit(req, LOG_ACTIONS.SUB_STAGE_COMPLETE);
+    if (status === "COMPLETED") audit(req, LOG_ACTIONS.SUB_STAGE_COMPLETE);
     res.json({ success: true });
   }),
 );

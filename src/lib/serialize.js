@@ -254,7 +254,7 @@ export const processOut = (process) => {
 export const subStageEntryOut = (entry) => ({
   _id: id(entry),
   name: entry.name ?? entry.subStageId?.name ?? "",
-  status: entry.status ?? 0,
+  status: entry.status ?? "PENDING",
   start: entry.start,
   end: entry.end,
   description: entry.description ?? "",
@@ -262,8 +262,11 @@ export const subStageEntryOut = (entry) => ({
   delayReasons: (entry.delayReasons ?? []).map((reason) =>
     reason?.name ? { _id: id(reason), name: reason.name } : { _id: id(reason) },
   ),
-  materials: (entry.materials ?? []).map((material) =>
-    material?.name ? materialOut(material) : { _id: id(material) },
+  // The catalogue record plus the serial number recorded for this use.
+  materials: (entry.materials ?? []).map((used) =>
+    used?.material?.name
+      ? { ...materialOut(used.material), serialNumber: used.serialNumber ?? "" }
+      : { _id: id(used?.material ?? used), serialNumber: used?.serialNumber ?? "" },
   ),
   subStageId: entry.subStageId?.name
     ? {

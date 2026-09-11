@@ -206,11 +206,19 @@ const seed = async () => {
       subStages: (stage.subStages ?? []).map((subStage, subIndex) => ({
         subStageId: subStage._id,
         name: subStage.name,
-        // First stage finished; the second has one sub-stage done, one running.
-        status: index === 0 ? 2 : index === 1 && subIndex === 0 ? 2 : 0,
+        // First stage finished; the second has one sub-stage done, one waiting.
+        status:
+          index === 0 || (index === 1 && subIndex === 0)
+            ? "COMPLETED"
+            : index === 1
+              ? "ACTIVE"
+              : "PENDING",
         start: index <= 1 ? new Date(Date.now() - 86400000) : null,
         end: index === 0 || (index === 1 && subIndex === 0) ? new Date() : null,
-        materials: subStage.materials ?? [],
+        materials: (subStage.materials ?? []).map((material) => ({
+          material,
+          serialNumber: "",
+        })),
       })),
     };
   });

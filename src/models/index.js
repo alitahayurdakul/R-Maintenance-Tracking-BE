@@ -237,12 +237,26 @@ const subStageEntrySchema = new Schema(
     subStageId: { type: Schema.Types.ObjectId, ref: "SubStage", required: true },
     name: String,
     description: { type: String, default: "" },
-    // 0 pending, 1 running, 2 done - the frontend renders either form.
-    status: { type: Number, default: 0 },
+    // The frontend resolves a status through STATUS in consts/options, whose
+    // codes are these strings; a number there renders as "-" and every button
+    // that depends on it disappears.
+    status: {
+      type: String,
+      enum: ["PENDING", "ACTIVE", "COMPLETED"],
+      default: "PENDING",
+    },
     start: { type: Date, default: null },
     end: { type: Date, default: null },
     images: { type: [String], default: [] },
-    materials: [{ type: Schema.Types.ObjectId, ref: "Material" }],
+    // The serial number belongs to the use, not to the catalogue entry: the same
+    // material is fitted with a different one each time.
+    materials: [
+      {
+        _id: false,
+        material: { type: Schema.Types.ObjectId, ref: "Material" },
+        serialNumber: { type: String, default: "" },
+      },
+    ],
     delayReasons: [{ type: Schema.Types.ObjectId, ref: "Reason" }],
   },
   { timestamps: true },

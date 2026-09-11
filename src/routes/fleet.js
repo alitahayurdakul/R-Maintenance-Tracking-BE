@@ -243,7 +243,7 @@ fleetRouter.get(
           (process.entries ?? []).reduce(
             (inner, entry) =>
               inner +
-              (entry.subStages ?? []).filter((sub) => sub.status === 2).length,
+              (entry.subStages ?? []).filter((sub) => sub.status === "COMPLETED").length,
             0,
           ),
         0,
